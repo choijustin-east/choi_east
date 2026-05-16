@@ -341,6 +341,7 @@ def get_vla_action(
     action_head: Optional[torch.nn.Module] = None,
     proprio_projector: Optional[torch.nn.Module] = None,
     use_film: bool = False, use_minivlm: bool = False,
+    warm_start_state=None,
 ) -> List[np.ndarray]:
     with torch.inference_mode():
         all_images = [obs["full_image"]]
@@ -374,13 +375,14 @@ def get_vla_action(
 
         actual_iters = None
         final_kl = None
+        first_state = None
         if action_head is None:
             action, _, actual_iters, final_kl = vla.predict_action(**inputs, unnorm_key=cfg.unnorm_key, do_sample=False)
         else:
             convergence_strategy = getattr(cfg, 'recurrence_strategy', 'fixed')
             if convergence_strategy == 'fixed':
                 convergence_strategy = None
-            action, _, actual_iters, final_kl = vla.predict_action(
+            action, _, actual_iters, final_kl, first_state = vla.predict_action(
                 **inputs, unnorm_key=cfg.unnorm_key, do_sample=False,
                 proprio=proprio, proprio_projector=proprio_projector,
                 action_head=action_head, use_film=use_film,
@@ -389,10 +391,11 @@ def get_vla_action(
                 kl_thresh=getattr(cfg, 'recurrence_kl_thresh', 0.001),
                 cos_thresh=getattr(cfg, 'recurrence_cos_thresh', 0.999),
                 max_iter=getattr(cfg, 'recurrence_max_iter', 32),
+                warm_start_state=warm_start_state,
             )
 
     actions = [action[i] for i in range(min(len(action), cfg.num_open_loop_steps))]
-    return actions, actual_iters, final_kl
+    return actions, actual_iters, final_kl, first_state
 
 
 def get_action_from_server(

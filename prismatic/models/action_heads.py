@@ -234,6 +234,7 @@ class VLARecurrent(nn.Module):
 
     def forward(self, h_a: torch.Tensor, h_t: torch.Tensor, p: torch.Tensor,
                 num_iter: int = None, convergence_strategy: str = None,
+                warm_start_state: torch.Tensor = None,
                 kl_thresh: float = 0.001, cos_thresh: float = 0.999,
                 max_iter: int = 32, **kwargs) -> torch.Tensor:
         B = h_a.size(0)
@@ -246,7 +247,11 @@ class VLARecurrent(nn.Module):
                 x = layer(x, h_a[:, self.prelude_vlm_layers[i]], h_t[:, self.prelude_vlm_layers[i]], p)
         prelude_out = x
 
-        state = self.init_state(B, device, dtype)
+        if warm_start_state is not None:
+            state = warm_start_state.to(device=device, dtype=dtype)
+        else:
+            state = self.init_state(B, device, dtype)
+        first_state = None
 
         # Convergence-based stopping
         if convergence_strategy in ("kl_divergence", "cosine_similarity") and not self.training:
@@ -257,6 +262,8 @@ class VLARecurrent(nn.Module):
                 for it in range(max_iter):
                     state = self._run_one_iteration(state, prelude_out, h_a, h_t, p)
                     actual_iter = it + 1
+                    if it == 0:
+                        first_state = state.clone()
                     curr_output = self._get_output(state, h_a, h_t, p)
 
                     if prev_output is not None:
@@ -271,10 +278,11 @@ class VLARecurrent(nn.Module):
                             mse = torch.mean((curr_output - prev_output) ** 2).item()
                             final_kl = mse
                             if mse < kl_thresh:
+                                print(f"[K={actual_iter}]", end=" ", flush=True)
                                 break
                     prev_output = curr_output
 
-            return self._get_output(state, h_a, h_t, p), actual_iter, final_kl
+            return self._get_output(state, h_a, h_t, p), actual_iter, final_kl, first_state
 
         # Fixed iterations
         if num_iter is not None:
@@ -316,7 +324,7 @@ class ActionHeadRecurrent(nn.Module):
 
     def predict_action(self, actions_hidden_states, proprio=None, proprio_projector=None,
                        phase="Inference", num_iter=None, convergence_strategy=None,
-                       kl_thresh=0.001, cos_thresh=0.999, max_iter=32, **kwargs):
+                       kl_thresh=0.001, cos_thresh=0.999, max_iter=32, warm_start_state=None, **kwargs):
         B = actions_hidden_states.shape[0]
         proprio = proprio.reshape(B, -1).to(torch.bfloat16)
         proprio_features = proprio_projector(proprio).unsqueeze(1)
@@ -324,4 +332,4 @@ class ActionHeadRecurrent(nn.Module):
         h_a = actions_hidden_states[:, :, self.num_task_tokens:, :]
         return self.model(h_a, h_t, proprio_features, num_iter=num_iter,
                          convergence_strategy=convergence_strategy, kl_thresh=kl_thresh,
-                         cos_thresh=cos_thresh, max_iter=max_iter)
+                         cos_thresh=cos_thresh, max_iter=max_iter, warm_start_state=warm_start_state)

@@ -105,11 +105,12 @@ def get_action(
     proprio_projector: Optional[torch.nn.Module] = None,
     use_film: bool = False,
     use_minivlm: bool = False,
+    warm_start_state=None,
 ) -> Union[List[np.ndarray], np.ndarray]:
     """Query the model to get action predictions."""
     with torch.no_grad():
         if cfg.model_family == "openvla":
-            actions, actual_iters, final_kl = get_vla_action(
+            actions, actual_iters, final_kl, first_state = get_vla_action(
                 cfg=cfg,
                 vla=model,
                 processor=processor,
@@ -118,12 +119,13 @@ def get_action(
                 action_head=action_head,
                 proprio_projector=proprio_projector,
                 use_film=use_film,
-                use_minivlm=use_minivlm
+                use_minivlm=use_minivlm,
+                warm_start_state=warm_start_state
             )
         else:
             raise ValueError(f"Unsupported model family: {cfg.model_family}")
 
-    return actions, actual_iters, final_kl
+    return actions, actual_iters, final_kl, first_state
 
 
 def normalize_gripper_action(action: np.ndarray, binarize: bool = True) -> np.ndarray:

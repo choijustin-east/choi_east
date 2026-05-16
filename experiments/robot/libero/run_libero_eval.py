@@ -180,7 +180,8 @@ def save_rollout_video_with_stats(
     """Save rollout video with thinking steps overlaid on frames."""
     from experiments.robot.robot_utils import DATE, DATE_TIME
 
-    rollout_dir = f"./rollouts/{save_version}/{DATE}"
+    processed_task_dir = task_description.lower().replace(" ", "_")[:30]
+    rollout_dir = f"./rollouts/{save_version}/{processed_task_dir}"
     os.makedirs(rollout_dir, exist_ok=True)
     processed_task = task_description.lower().replace(" ", "_").replace("\n", "_").replace(".", "_")[:50]
     mp4_path = f"{rollout_dir}/{DATE_TIME}--episode={idx}--success={success}--task={processed_task}.mp4"
@@ -348,6 +349,7 @@ def run_episode(
 
     action_queue = deque()
     episode_iters = []
+    warm_start_state = None
     replay_stats = []  # (iters, num_actions) per prediction
 
     success = False
@@ -362,7 +364,7 @@ def run_episode(
             replay_images.append(img)
 
             if len(action_queue) == 0:
-                actions, actual_iters, final_kl = get_action(
+                actions, actual_iters, final_kl, first_state = get_action(
                     cfg,
                     model,
                     observation,
@@ -371,8 +373,10 @@ def run_episode(
                     action_head=action_head,
                     proprio_projector=proprio_projector,
                     use_film=cfg.use_film,
-                    use_minivlm=cfg.use_minivlm
+                    use_minivlm=cfg.use_minivlm,
+                    warm_start_state=warm_start_state
                 )
+                warm_start_state = first_state
 
                 if actual_iters is not None:
                     episode_iters.append(actual_iters)
@@ -418,6 +422,7 @@ def run_episode(
             t += 1
 
     except Exception as e:
+        import traceback; traceback.print_exc()
         log_message(f"Episode error: {e}", log_file)
 
     return success, replay_images, episode_iters, replay_stats
@@ -478,6 +483,7 @@ def run_task(
             else:
                 all_iters_failure.extend(episode_iters)
             log_message(f"  Episode iters: {len(episode_iters)} preds, avg={ep_avg:.1f}", log_file)
+        log_message(f"  K values: {episode_iters}", log_file)
 
         task_episodes += 1
         total_episodes += 1

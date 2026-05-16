@@ -785,6 +785,7 @@ class OpenVLAForActionPrediction(PrismaticForConditionalGeneration):
         kl_thresh=0.001,
         cos_thresh=0.999,
         max_iter=32,
+        warm_start_state=None,
     ):
         """Run L1 regression-based continuous action prediction or discrete action tokens prediction."""
 
@@ -835,6 +836,7 @@ class OpenVLAForActionPrediction(PrismaticForConditionalGeneration):
             # L1 regression prediction
             result = action_head.predict_action(
                 multi_layer_hidden_states,
+                warm_start_state=warm_start_state,
                 proprio=proprio,
                 proprio_projector=proprio_projector,
                 num_iter=num_iter,
@@ -847,10 +849,14 @@ class OpenVLAForActionPrediction(PrismaticForConditionalGeneration):
             actual_iters = None
             final_kl = None
             if isinstance(result, tuple):
-                if len(result) == 3:
+                if len(result) == 4:
+                    normalized_actions, actual_iters, final_kl, first_state = result
+                elif len(result) == 3:
                     normalized_actions, actual_iters, final_kl = result
+                    first_state = None
                 else:
                     normalized_actions, actual_iters = result
+                    first_state = None
             else:
                 normalized_actions = result
             normalized_actions = normalized_actions.reshape(NUM_ACTIONS_CHUNK, ACTION_DIM)
@@ -872,7 +878,7 @@ class OpenVLAForActionPrediction(PrismaticForConditionalGeneration):
             normalized_actions = self.bin_centers[discretized_actions]
             normalized_actions = normalized_actions.reshape(NUM_ACTIONS_CHUNK, ACTION_DIM)
 
-        return normalized_actions, actions_hidden_states, actual_iters, final_kl
+        return normalized_actions, actions_hidden_states, actual_iters, final_kl, first_state
 
 
     def predict_action(
@@ -888,6 +894,7 @@ class OpenVLAForActionPrediction(PrismaticForConditionalGeneration):
         kl_thresh: float = 0.001,
         cos_thresh: float = 0.999,
         max_iter: int = 32,
+        warm_start_state=None,
         **kwargs: str,
     ) -> np.ndarray:
 
@@ -928,7 +935,7 @@ class OpenVLAForActionPrediction(PrismaticForConditionalGeneration):
         NUM_PATCHES = self.vision_backbone.get_num_patches() * self.vision_backbone.get_num_images_in_input()
 
         # Run regression or discrete token-based prediction
-        normalized_actions, actions_hidden_states, actual_iters, final_kl = self._regression_or_discrete_prediction(
+        normalized_actions, actions_hidden_states, actual_iters, final_kl, first_state = self._regression_or_discrete_prediction(
             input_embeddings,
             all_actions_mask,
             projected_patch_embeddings,
@@ -944,12 +951,13 @@ class OpenVLAForActionPrediction(PrismaticForConditionalGeneration):
             kl_thresh=kl_thresh,
             cos_thresh=cos_thresh,
             max_iter=max_iter,
+            warm_start_state=warm_start_state,
             )
 
         # Unnormalize predicted actions
         actions = self._unnormalize_actions(normalized_actions, unnorm_key)
 
-        return actions, actions_hidden_states, actual_iters, final_kl
+        return actions, actions_hidden_states, actual_iters, final_kl, first_state
 
 
 
