@@ -262,8 +262,6 @@ class VLARecurrent(nn.Module):
                 for it in range(max_iter):
                     state = self._run_one_iteration(state, prelude_out, h_a, h_t, p)
                     actual_iter = it + 1
-                    if it == 0:
-                        first_state = state.clone()
                     curr_output = self._get_output(state, h_a, h_t, p)
 
                     if prev_output is not None:
@@ -282,6 +280,7 @@ class VLARecurrent(nn.Module):
                                 break
                     prev_output = curr_output
 
+            first_state = state.clone()
             return self._get_output(state, h_a, h_t, p), actual_iter, final_kl, first_state
 
         # Fixed iterations
