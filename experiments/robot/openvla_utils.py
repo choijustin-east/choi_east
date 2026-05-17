@@ -377,7 +377,7 @@ def get_vla_action(
         final_kl = None
         first_state = None
         if action_head is None:
-            action, _, actual_iters, final_kl = vla.predict_action(**inputs, unnorm_key=cfg.unnorm_key, do_sample=False)
+            action, _, actual_iters, final_kl, first_state = vla.predict_action(**inputs, unnorm_key=cfg.unnorm_key, do_sample=False)
         else:
             convergence_strategy = getattr(cfg, 'recurrence_strategy', 'fixed')
             if convergence_strategy == 'fixed':
