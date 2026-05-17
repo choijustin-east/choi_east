@@ -419,6 +419,8 @@ def run_episode(
             t += 1
 
     except Exception as e:
+        import traceback; traceback.print_exc()
+        import traceback; traceback.print_exc()
         log_message(f"Episode error: {e}", log_file)
 
     return success, replay_images, episode_iters, replay_stats

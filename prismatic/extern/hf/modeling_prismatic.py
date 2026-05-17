@@ -847,8 +847,10 @@ class OpenVLAForActionPrediction(PrismaticForConditionalGeneration):
             actual_iters = None
             final_kl = None
             if isinstance(result, tuple):
-                if len(result) == 3:
+                if len(result) == 4:
                     normalized_actions, actual_iters, final_kl, _ = result
+                elif len(result) == 3:
+                    normalized_actions, actual_iters, final_kl = result
                 else:
                     normalized_actions, actual_iters = result
             else:
