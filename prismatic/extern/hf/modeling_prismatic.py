@@ -848,7 +848,7 @@ class OpenVLAForActionPrediction(PrismaticForConditionalGeneration):
             final_kl = None
             if isinstance(result, tuple):
                 if len(result) == 3:
-                    normalized_actions, actual_iters, final_kl = result
+                    normalized_actions, actual_iters, final_kl, _ = result
                 else:
                     normalized_actions, actual_iters = result
             else:
@@ -872,7 +872,7 @@ class OpenVLAForActionPrediction(PrismaticForConditionalGeneration):
             normalized_actions = self.bin_centers[discretized_actions]
             normalized_actions = normalized_actions.reshape(NUM_ACTIONS_CHUNK, ACTION_DIM)
 
-        return normalized_actions, actions_hidden_states, actual_iters, final_kl
+        return normalized_actions, actions_hidden_states, actual_iters, final_kl, None
 
 
     def predict_action(
@@ -928,7 +928,7 @@ class OpenVLAForActionPrediction(PrismaticForConditionalGeneration):
         NUM_PATCHES = self.vision_backbone.get_num_patches() * self.vision_backbone.get_num_images_in_input()
 
         # Run regression or discrete token-based prediction
-        normalized_actions, actions_hidden_states, actual_iters, final_kl = self._regression_or_discrete_prediction(
+        normalized_actions, actions_hidden_states, actual_iters, final_kl, _ = self._regression_or_discrete_prediction(
             input_embeddings,
             all_actions_mask,
             projected_patch_embeddings,
@@ -949,7 +949,7 @@ class OpenVLAForActionPrediction(PrismaticForConditionalGeneration):
         # Unnormalize predicted actions
         actions = self._unnormalize_actions(normalized_actions, unnorm_key)
 
-        return actions, actions_hidden_states, actual_iters, final_kl
+        return actions, actions_hidden_states, actual_iters, final_kl, None
 
 
 

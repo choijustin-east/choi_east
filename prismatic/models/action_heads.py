@@ -274,7 +274,7 @@ class VLARecurrent(nn.Module):
                                 break
                     prev_output = curr_output
 
-            return self._get_output(state, h_a, h_t, p), actual_iter, final_kl
+            return self._get_output(state, h_a, h_t, p), actual_iter, final_kl, None
 
         # Fixed iterations
         if num_iter is not None:
@@ -295,7 +295,7 @@ class VLARecurrent(nn.Module):
         for _ in range(min(k, total)):
             state = self._run_one_iteration(state, prelude_out, h_a, h_t, p)
 
-        return self._get_output(state, h_a, h_t, p)
+        return self._get_output(state, h_a, h_t, p), None, None, None
 
 
 class ActionHeadRecurrent(nn.Module):

@@ -109,7 +109,7 @@ def get_action(
     """Query the model to get action predictions."""
     with torch.no_grad():
         if cfg.model_family == "openvla":
-            actions, actual_iters, final_kl = get_vla_action(
+            actions, actual_iters, final_kl, _ = get_vla_action(
                 cfg=cfg,
                 vla=model,
                 processor=processor,
@@ -123,7 +123,7 @@ def get_action(
         else:
             raise ValueError(f"Unsupported model family: {cfg.model_family}")
 
-    return actions, actual_iters, final_kl
+    return actions, actual_iters, final_kl, None
 
 
 def normalize_gripper_action(action: np.ndarray, binarize: bool = True) -> np.ndarray:
