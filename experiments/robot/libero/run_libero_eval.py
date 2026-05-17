@@ -362,7 +362,7 @@ def run_episode(
             replay_images.append(img)
 
             if len(action_queue) == 0:
-                actions, actual_iters, final_kl = get_action(
+                actions, actual_iters, final_kl, first_state = get_action(
                     cfg,
                     model,
                     observation,
@@ -376,6 +376,7 @@ def run_episode(
 
                 if actual_iters is not None:
                     episode_iters.append(actual_iters)
+                    print(f"[K={actual_iters}]", end=" ", flush=True)
 
                 if cfg.use_linear_decay_horizon and actual_iters is not None:
                     num_actions = calculate_linear_decay_horizon(actual_iters)
